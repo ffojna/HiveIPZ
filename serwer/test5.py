@@ -273,22 +273,6 @@ def verify_token():
         print(f"Ogólny błąd: {e}")
         return jsonify({'error': 'Błąd serwera', 'details': str(e)}), 500
 
-# Filipa syfn a pobieranie hasła
-@app.route('/get_password/<user_id>', methods=['GET'])
-def get_password(user_id):
-    try:
-        cursor = mydb.cursor(dictionary=True)
-        sql = "SELECT password FROM users WHERE id = %s"
-        cursor.execute(sql, (user_id,))
-        user = cursor.fetchone()
-
-        if not user:
-            return jsonify({'error': 'Nie znaleziono użytkownika o podanym ID'}), 404
-
-        return jsonify({'password': user['password']}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 # Częśc patrykowa do konta użytkownika
 @app.route('/get_user_by_token', methods=['POST'])
