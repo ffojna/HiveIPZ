@@ -8,6 +8,8 @@ import '../pages/new_event_page.dart';
 import '../pages/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const int MAX_RECENT_SEARCHES = 5;
+
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
   final List<Event> events;
@@ -55,6 +57,19 @@ class _HomePageState extends State<HomePage> {
       recentSearches = prefs.getStringList('recentSearches') ??
           ['pudzian', 'kremówki', 'mariusz'];
     });
+  }
+
+  Future<void> _saveSearchQuery(String query) async {
+    if (query.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentSearches.remove(query);
+      recentSearches.insert(0, query);
+      if (recentSearches.length > MAX_RECENT_SEARCHES) {
+        recentSearches.removeLast();
+      }
+    });
+    await prefs.setStringList('recentSearches', recentSearches);
   }
 
   /// Funkcja wyszukuje eventy ze słowem kluczowym w nazwie/lokalizacji i otweira filtered page ze znalezionymi wynikami
@@ -449,6 +464,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onSearch(String query) {
+    _saveSearchQuery(query);
     _filterEventsByQuery(query);
     setState(() {
       isSearching = false;
