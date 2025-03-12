@@ -479,22 +479,6 @@ class _HomePageState extends State<HomePage> {
       _selectedFromBottomBar = index;
       switch (_selectedFromBottomBar) {
         case 0:
-          _toggleSearch();
-          break;
-        case 1:
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
-                setState(() {
-                  events.add(newEvent);
-                  // _filteredEvents = widget.events;
-                });
-              }),
-            ),
-          );
-          break;
-        case 2:
           showModalBottomSheet(
             context: context,
             builder: (context) {
@@ -541,7 +525,20 @@ class _HomePageState extends State<HomePage> {
             },
           );
           break;
-        case 3:
+        case 1:
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateEventPage(onEventCreated: (newEvent) {
+                setState(() {
+                  events.add(newEvent);
+                  // _filteredEvents = widget.events;
+                });
+              }),
+            ),
+          );
+          break;
+        case 2:
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -558,15 +555,36 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: isSearching
-            ? TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: "Szukaj...",
-                  border: InputBorder.none,
-                  suffixIcon: IconButton(
-                      onPressed: _toggleSearch, icon: Icon(Icons.clear)),
-                ),
-                onSubmitted: _onSearch,
+            ? Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if(textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  return recentSearches.where((search) =>
+                  search.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+                },
+          onSelected: (String selection) {
+                  _searchController.text = selection;
+                  _onSearch(selection);
+          },
+          fieldViewBuilder: (BuildContext context, TextEditingController fieldTextController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+                  return TextField(
+                    controller: fieldTextController,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Szukaj...',
+                      border: InputBorder.none,
+                      suffixIcon: IconButton(
+                          onPressed: _toggleSearch,
+                          icon: Icon(Icons.clear),
+                      ),
+                    ),
+                    onSubmitted: (query) {
+                      onFieldSubmitted();
+                      _onSearch(query);
+                    },
+                  );
+          },
               )
             : const Text('Strona Główna'),
         actions: [
@@ -612,22 +630,9 @@ class _HomePageState extends State<HomePage> {
         selectedItemColor: const Color.fromARGB(255, 0, 0, 0),
         unselectedItemColor: const Color.fromARGB(255, 0, 0, 0),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'dołącz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.filter_alt_outlined),
-            label: 'filtruj',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'profil',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.filter_alt_outlined), label: 'dołącz',),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: 'filtruj',),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'profil',),
         ],
       ),
     );
