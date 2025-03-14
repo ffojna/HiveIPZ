@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:Hive/styles/text_styles.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,9 @@ import '../database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart' show ByteData, rootBundle;
+import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
+
 
 /// Strona profilu użytkownika
 class ProfilePage extends StatefulWidget {
@@ -21,12 +25,14 @@ class _ProfilePageState extends State<ProfilePage> {
   int? userId;
   File? _localImage;
 
-  get http => null;
+
+  get userEvents => null;
 
   @override
   void initState() {
     super.initState();
     _fetchUserData();
+    _fetchUserEvents();
   }
 
   Future<void> _fetchUserData() async {
@@ -56,6 +62,47 @@ class _ProfilePageState extends State<ProfilePage> {
       print('Błąd podczas pobierania danych użytkownika: $e');
     }
   }
+
+
+  Future<void> _fetchUserEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        print("Brak tokena w SharedPreferences");
+        return;
+      } else {
+        print("Token znaleziony: $token");
+      }
+
+      // Ignorowanie błędów certyfikatu (TYLKO NA TESTY!)
+      final ioc = HttpClient()
+        ..badCertificateCallback = (X509Certificate cert, String host, int port) => true;
+      final httpClient = IOClient(ioc);
+
+      final response = await httpClient.get(
+        Uri.parse('https://212.127.78.92:5000/user_events'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      print('Kod odpowiedzi: ${response.statusCode}');
+      print('Treść odpowiedzi: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final List<dynamic> events = jsonDecode(response.body);
+        setState(() {
+          var userEvents = events;
+        });
+      } else {
+        throw Exception("Błąd podczas pobierania wydarzeń: ${response.statusCode}");
+      }
+    } catch (e) {
+      print('Błąd podczas pobierania wydarzeń: $e');
+    }
+  }
+
+
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -255,11 +302,22 @@ class _ProfilePageState extends State<ProfilePage> {
                       topRight: Radius.circular(30),
                     ),
                   ),
-                  child: const Center(
+                  child: userEvents == null || userEvents!.isEmpty
+                      ? const Center(
                     child: Text(
-                      'W przyszłości wydarzenia użytkownika',
+                      'Brak przyszłych wydarzeń',
                       style: TextStyle(fontSize: 18),
                     ),
+                  )
+                      : ListView.builder(
+                    itemCount: userEvents!.length,
+                    itemBuilder: (context, index) {
+                      final event = userEvents![index];
+                      return ListTile(
+                        title: Text(event['name']),
+                        subtitle: Text(event['start_date']),
+                      );
+                    },
                   ),
                 ),
               ),

@@ -356,7 +356,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class TwoFactorAuthPage extends StatefulWidget {
   final bool hasBiometrics;
-
   const TwoFactorAuthPage({
     Key? key,
     required this.hasBiometrics,
@@ -369,7 +368,11 @@ class TwoFactorAuthPage extends StatefulWidget {
 class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
   bool _isBiometricEnabled = false;
   String _pin = '';
+  String _confirmPin = '';
+  bool _isSettingPin = false;
+
   final TextEditingController _pinController = TextEditingController();
+  final TextEditingController _confirmPinController = TextEditingController();
 
   @override
   void initState() {
@@ -384,7 +387,7 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
       _pin = prefs.getString('pin_') ?? '';
     });
   }
- //TODO: Jeżeli jest już ustawiony PIN, możliwość zmiany go !!!Podanie starego PINu!!!
+
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('biometric_enabled_', _isBiometricEnabled);
@@ -393,24 +396,80 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
 
   Future<void> _authenticateBiometric() async {
     final LocalAuthentication auth = LocalAuthentication();
-    bool authenticated = await auth.authenticate(
-      localizedReason: 'Włącz weryfikację biometryczną',
-    );
+    bool authenticated = false;
 
-    if (authenticated) {
-      setState(() {
-        _isBiometricEnabled = true;
-      });
-      await _saveSettings();
+    try {
+      if (!await auth.canCheckBiometrics) {
+        throw Exception('Biometria niedostępna');
+      }
+
+      authenticated = await auth.authenticate(
+        localizedReason: 'Potwierdź tożsamość',
+        options: const AuthenticationOptions(stickyAuth: true),
+      );
+
+      if (authenticated) {
+        setState(() => _isBiometricEnabled = true);
+        await _saveSettings();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Biometria włączona')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Błąd: $e')),
+      );
     }
+  }
+
+  void _startPinSetup() {
+    setState(() {
+      _isSettingPin = true;
+      _pinController.clear();
+      _confirmPinController.clear();
+    });
+  }
+
+  void _cancelPinSetup() {
+    setState(() {
+      _isSettingPin = false;
+      _pinController.clear();
+      _confirmPinController.clear();
+    });
+  }
+
+  void _savePin() {
+    final newPin = _pinController.text.trim();
+    final confirmPin = _confirmPinController.text.trim();
+
+    if (newPin != confirmPin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PINy nie są zgodne')),
+      );
+      return;
+    }
+
+    if (newPin.length != 4 || !RegExp(r'^\d{4}$').hasMatch(newPin)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PIN musi mieć 4 cyfry')),
+      );
+      return;
+    }
+
+    setState(() {
+      _pin = newPin;
+      _isSettingPin = false;
+    });
+    _saveSettings();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PIN zapisany')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Weryfikacja dwuetapowa'),
-      ),
+      appBar: AppBar(title: const Text('Weryfikacja dwuetapowa')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -420,59 +479,76 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
               'Metody weryfikacji',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
 
-            // Opcja biometrii
+            // Opcja biometryczna
             if (widget.hasBiometrics)
               ListTile(
                 leading: const Icon(Icons.fingerprint),
-                title: const Text('Weryfikacja biometryczna'),
+                title: const Text('Biometria'),
                 trailing: Switch(
                   value: _isBiometricEnabled,
                   onChanged: (value) async {
-                    if (value) {
-                      await _authenticateBiometric();
-                    } else {
-                      setState(() {
-                        _isBiometricEnabled = false;
-                      });
-                      await _saveSettings();
+                    if (value && _pin.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Ustaw PIN przed włączeniem biometrii')),
+                      );
+                      return;
                     }
+                    await _authenticateBiometric();
                   },
                 ),
               ),
 
-            // Opcja PINu
-            const SizedBox(height: 16),
+            const Divider(),
+
+            // Sekcja PIN
             const Text(
               'Kod PIN',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            TextField(
-              controller: _pinController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Wprowadź nowy PIN (4 cyfry)',
+
+            if (!_isSettingPin)
+              ListTile(
+                title: Text(_pin.isNotEmpty ? 'PIN ustawiony' : 'Brak PINu'),
+                trailing: ElevatedButton(
+                  onPressed: _startPinSetup,
+                  child: Text(_pin.isNotEmpty ? 'Zmień PIN' : 'Ustaw PIN'),
+                ),
+              )
+            else
+              Column(
+                children: [
+                  TextField(
+                    controller: _pinController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Nowy PIN (4 cyfry)'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  TextField(
+                    controller: _confirmPinController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Potwierdź PIN'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: _cancelPinSetup,
+                        child: const Text('Anuluj'),
+                      ),
+                      ElevatedButton(
+                        onPressed: _savePin,
+                        child: const Text('Zapisz PIN'),
+                      ),
+                    ],
+                  )
+                ],
               ),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                if (value.length == 4) {
-                  setState(() {
-                    _pin = value;
-                  });
-                  _saveSettings();
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _pin.isNotEmpty ? 'PIN zapisany' : 'Brak zapisanego PINu',
-              style: TextStyle(color: _pin.isNotEmpty ? Colors.green : Colors.red),
-            ),
           ],
         ),
       ),
     );
   }
 }
-

@@ -38,6 +38,7 @@ dependencies:
   shared_preferences: ^2.3.5 # Obsługa sesju użytkownika
   biometric_login: ^0.0.1 # Logowanie biometryczne
   local_auth: ^2.3.0
+  flutter_svg: ^2.0.17 # Obsługa SVG
 
 
   # The following adds the Cupertino Icons font to your application.
