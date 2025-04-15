@@ -12,6 +12,10 @@ import '../pages/points_page.dart';
 import '../services/event_filter_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import '../widgets/sorting_modal_bottom_sheet.dart';
 
 /// Strona główna realizująca ideę rolek z wydarzeniami
 class HomePage extends StatefulWidget {
@@ -31,6 +35,9 @@ class _HomePageState extends State<HomePage> {
   int selectedSortingType = 0;
   bool sortingAscending = false;
   double searchBarWidth = 56;
+  PageController _pageController = PageController();
+  int _currentPage = 0;
+  Map<String, String?> userRatings = {}; // eventId -> 'like' lub 'dislike'
   final FocusNode _searchFocusNode = FocusNode();
 
   // FIXME daje tutaj przykładowe, żeby zobaczyć jak działa, trzeba to wyrzucić
@@ -44,6 +51,66 @@ class _HomePageState extends State<HomePage> {
     isSearching = false;
     _fetchAllEvents(); // Wywołanie funkcji pobierającej dane
     _loadRecentSearches(); //pobranie poprzednich wyszukiwań
+    _pageController = PageController();
+  }
+
+  void _rateEvent(String eventId, bool isLike) async {
+    final token = await DatabaseHelper.getToken();
+    if (token == null) {
+      print('Brak tokenu – użytkownik nie jest zalogowany.');
+      return;
+    }
+
+    final url =
+        Uri.parse('https://vps.jakosinski.pl:5000/events/$eventId/rate');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'type': isLike ? 'like' : 'dislike'}),
+      );
+
+      if (response.statusCode == 200) {
+        print('Ocena zapisana');
+        _fetchUserRating(eventId); // <-- odśwież kolory ikonek
+      } else {
+        print('Błąd oceny: ${response.body}');
+      }
+    } catch (e) {
+      print('Błąd sieci: $e');
+    }
+  }
+
+  Future<void> _fetchUserRating(String eventId) async {
+    final token = await DatabaseHelper.getToken();
+    if (token == null) {
+      print('Brak tokenu – użytkownik nie jest zalogowany.');
+      return;
+    }
+
+    final url = Uri.parse(
+        'https://vps.jakosinski.pl:5000/events/$eventId/rating_status');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          userRatings[eventId] =
+              data['rating']; // 'like' lub 'dislike' lub null
+        });
+      }
+    } catch (e) {
+      print('Błąd pobierania oceny: $e');
+    }
   }
 
   // Pobieranie wydarzeń z bazy
@@ -69,29 +136,6 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       recentSearches =
           prefs.getStringList('recentSearches') ?? ['zut', 'pudzian', 'rabbit'];
-    });
-  }
-
-  void sortEventsByPrice(bool ascending) {
-    setState(() {
-      events.sort((a, b) =>
-          ascending ? a.cena.compareTo(b.cena) : b.cena.compareTo(a.cena));
-    });
-  }
-
-  void sortEventsByParticipants(bool ascending) {
-    setState(() {
-      events.sort((a, b) => ascending
-          ? a.registeredParticipants.compareTo(b.registeredParticipants)
-          : b.registeredParticipants.compareTo(a.registeredParticipants));
-    });
-  }
-
-  void sortEventsByDate(bool ascending) {
-    setState(() {
-      events.sort((a, b) => ascending
-          ? a.startDate.compareTo(b.startDate)
-          : b.startDate.compareTo(a.startDate));
     });
   }
 
@@ -128,7 +172,6 @@ class _HomePageState extends State<HomePage> {
       isSearching = false;
     });
   }
-
 
   /// Obsługa NavigationBara na dole ekranu
   /// args:
@@ -170,7 +213,8 @@ class _HomePageState extends State<HomePage> {
           break;
         case 3:
           // Filtrowanie
-          EventFilterService.showFilterModalBottomSheet(context: context, events: events);
+          EventFilterService.showFilterModalBottomSheet(
+              context: context, events: events);
           break;
         case 4:
           // Profil użytkownika
@@ -196,8 +240,15 @@ class _HomePageState extends State<HomePage> {
               : RefreshIndicator(
                   onRefresh: _fetchAllEvents,
                   child: PageView.builder(
+                    controller: _pageController,
                     scrollDirection: Axis.vertical,
                     itemCount: events.length,
+                    onPageChanged: (index) {
+                      setState(() {
+                        _currentPage = index;
+                      });
+                      _fetchUserRating(events[index].id);
+                    },
                     itemBuilder: (context, index) {
                       final event = events[index];
                       return EventCard(
@@ -323,8 +374,8 @@ class _HomePageState extends State<HomePage> {
           ),
 
           Positioned(
-              top: MediaQuery.of(context).size.height - 290,
-              left: MediaQuery.of(context).size.width - 85,
+              top: MediaQuery.of(context).size.height - 305,
+              left: MediaQuery.of(context).size.width - 80,
               child: Row(
                 children: [
                   Container(
@@ -336,29 +387,61 @@ class _HomePageState extends State<HomePage> {
                           leading: Icon(Icons.import_export,
                               size: 35, color: Colors.white),
                           onTap: () {
-                            EventSorterService.showSortingModalBottomSheet(
+                            showModalBottomSheet(
                               context: context,
-                              events: events,
-                              refresh: () => setState(() {}),
-                              selectedSortingType: selectedSortingType,
-                              sortingAscending: sortingAscending,
-                              onSortingChanged: (type, ascending) {
-                                setState(() {
-                                  selectedSortingType = type;
-                                  sortingAscending = ascending;
-                                });
-                              },
+                              builder: (_) => SortingModalBottomSheet(
+                                events: events,
+                                selectedSortingType: selectedSortingType,
+                                sortingAscending: sortingAscending,
+                                onSortingChanged: (type, asc) {
+                                  setState(() {
+                                    selectedSortingType = type;
+                                    sortingAscending = asc;
+                                  });
+                                },
+                                refresh: () => setState(
+                                    () {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
+                              ),
                             );
                           },
                         ),
-                        ListTile(
-                          leading: Icon(Icons.thumb_up_alt_outlined,
-                              size: 35, color: Colors.white),
-                        ),
-                        ListTile(
-                          leading: Icon(Icons.thumb_down_alt_outlined,
-                              size: 35, color: Colors.white),
-                        ),
+                        if (events.isNotEmpty)
+                          ListTile(
+                            leading: Icon(
+                              Icons.thumb_down_alt_outlined,
+                              size: 35,
+                              color: userRatings[events[_currentPage].id] ==
+                                      'dislike'
+                                  ? Colors.red
+                                  : Colors.white,
+                            ),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, false),
+                          ),
+                        if (events.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(0, 0, 17, 0),
+                            child: Text(
+                              events[_currentPage].userScore.toString(),
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                            ),
+                          ),
+                        if (events.isNotEmpty)
+                          ListTile(
+                            leading: Icon(
+                              Icons.thumb_up_alt_outlined,
+                              size: 35,
+                              color:
+                                  userRatings[events[_currentPage].id] == 'like'
+                                      ? Colors.green
+                                      : Colors.white,
+                            ),
+                            onTap: () =>
+                                _rateEvent(events[_currentPage].id, true),
+                          ),
                       ],
                     ),
                   )

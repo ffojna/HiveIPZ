@@ -1,4 +1,5 @@
-// Model dla komentarzy
+import 'package:intl/intl.dart';
+
 class Comment {
   final String id;
   final String userId;
@@ -15,12 +16,14 @@ class Comment {
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) {
+    final formatter = DateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'", 'en_US');
+
     return Comment(
       id: json['id'].toString(),
       userId: json['user_id'].toString(),
       username: json['username'] ?? 'Nieznany użytkownik',
       text: json['text'] ?? '',
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: formatter.parse(json['created_at']),
     );
   }
 }

@@ -425,8 +425,9 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
                   children: [
                     TabBar(
                       controller: _tabController,
-                      labelColor: Colors.orange,
+                      labelColor: Colors.white,
                       unselectedLabelColor: Colors.white,
+                      indicatorColor: Colors.white,
                       tabs: const [
                         Tab(text: 'Administrowane'),
                         Tab(text: 'Zapisane'),

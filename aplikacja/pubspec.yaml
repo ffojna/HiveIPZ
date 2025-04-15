@@ -43,7 +43,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   add_2_calendar: ^2.1.0
-  google_sign_in: ^6.3.0  # google logowanie
+
+  google_sign_in: ^6.3.0          # google logowanie
+  flutter_facebook_auth: ^6.0.4   # facebook logowanie
+  url_launcher: ^6.2.5
+  intl: ^0.18.1 # data do komentarzy
 
 
 dev_dependencies:

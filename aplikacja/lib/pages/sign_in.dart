@@ -1,3 +1,5 @@
+import 'package:Hive/services/facebook_service.dart';
+import 'package:Hive/services/twitter_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../database/database_helper.dart';
@@ -261,16 +263,15 @@ void _completeLogin(String token, String userId) async {
                     children: [
                       IconButton(
                         icon: SvgPicture.asset('assets/facebook_icon.svg', width: 35, height: 35),
-                        onPressed: () {},
+                        onPressed: () {
+                          TwitterService.loginWithTwitter(context);
+                        },
                       ),
                       const SizedBox(width: 10),
                       IconButton(
                         icon: SvgPicture.asset('assets/google_icon.svg', width: 35, height: 35),
                         onPressed: () {
                           var googleUser = GoogleService.signInWithGoogle();
-                          // TODO sprawdź, czy istnieje użytkownik o takim mailu ? zaloguj po mail, id : wyowłaj rejestrację
-                          // być może trzeba będzie dodać wylogowanie google, ale nie wiem jak to śmignie jak użytkownik lognie się przez zwykłę konto np
-
                         },
                       ),
                     ],

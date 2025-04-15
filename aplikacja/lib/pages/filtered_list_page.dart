@@ -3,6 +3,7 @@ import 'package:Hive/services/event_sorter_service.dart';
 import 'package:flutter/material.dart';
 import '../models/event.dart';
 import '../widgets/event_list_tile.dart';
+import '../widgets/sorting_modal_bottom_sheet.dart';
 
 class FilteredListPage extends StatefulWidget {
   final List<Event> filteredEvents;
@@ -53,19 +54,22 @@ class _FilteredListPageState extends State<FilteredListPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          EventSorterService.showSortingModalBottomSheet(
+          showModalBottomSheet(
             context: context,
-            events: widget.filteredEvents,
-            refresh: () => setState(() {}),
-            selectedSortingType: selectedSortingType,
-            sortingAscending: sortingAscending,
-            onSortingChanged: (type, ascending) {
-              setState(() {
-                selectedSortingType = type;
-                sortingAscending = ascending;
-              });
-            },
+            builder: (_) => SortingModalBottomSheet(
+              events: widget.filteredEvents,
+              selectedSortingType: selectedSortingType,
+              sortingAscending: sortingAscending,
+              onSortingChanged: (type, asc) {
+                setState(() {
+                  selectedSortingType = type;
+                  sortingAscending = asc;
+                });
+              },
+              refresh: () => setState(() {}), // lub _fetchAllEvents, jeśli potrzebujesz odświeżenia z bazy
+            ),
           );
+
         },
         child: const Icon(Icons.import_export),
         backgroundColor: Colors.amber,

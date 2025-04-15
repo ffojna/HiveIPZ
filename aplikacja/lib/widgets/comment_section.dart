@@ -31,11 +31,10 @@ class _CommentSectionState extends State<CommentSection> {
     setState(() {
       isLoadingComments = true;
     });
-    
+
     try {
-      // Pobieranie komentarzy z serwera poprzez DatabaseHelper
       final commentsData = await DatabaseHelper.getEventComments(widget.eventId);
-      
+      print(commentsData);
       setState(() {
         comments = commentsData.map((commentJson) => Comment.fromJson(commentJson)).toList();
       });
@@ -44,27 +43,6 @@ class _CommentSectionState extends State<CommentSection> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Nie udało się pobrać komentarzy')),
       );
-      
-      // W przypadku błędu - wyświetl przykładowe komentarze do testowania UI
-      // Docelowo ten kod powinien zostać usunięty po pełnej implementacji API komentarzy
-      setState(() {
-        comments = [
-          Comment(
-            id: '1',
-            userId: '123',
-            username: 'Użytkownik1',
-            text: 'Super wydarzenie! Na pewno przyjdę.',
-            createdAt: DateTime.now().subtract(Duration(days: 2)),
-          ),
-          Comment(
-            id: '2',
-            userId: '456',
-            username: 'Użytkownik2',
-            text: 'Jaki jest plan na to wydarzenie?',
-            createdAt: DateTime.now().subtract(Duration(hours: 5)),
-          ),
-        ];
-      });
     } finally {
       setState(() {
         isLoadingComments = false;
@@ -72,23 +50,24 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
-  // Dodanie nowego komentarza
+
+
+
   Future<void> _addComment(String text) async {
     if (text.trim().isEmpty) return;
-    
+
     try {
-      // Dodawanie komentarza na serwerze poprzez DatabaseHelper
-      await DatabaseHelper.addEventComment(widget.eventId, text);
-      
-      // Po pomyślnym dodaniu komentarza pobieramy zaktualizowaną listę komentarzy
-      await _fetchComments();
+      await DatabaseHelper.addEventComment(widget.eventId, text); // 👈 WYWOŁANIE dodania
+      commentController.clear(); // 👈 Czyścimy input po dodaniu
+      await _fetchComments(); // 👈 Odśwież listę komentarzy
     } catch (e) {
-      print('Błąd podczas dodawania komentarza: $e');
+      print('Błąd komentarzy: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Nie udało się dodać komentarza')),
       );
     }
   }
+
 
   // Formatowanie daty dla komentarzy
   String _formatDate(DateTime date) {

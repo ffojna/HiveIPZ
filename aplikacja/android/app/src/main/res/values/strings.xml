@@ -1,1 +1,4 @@
-<string name="facebook_app_id">649744194488907</string>
+<resources>
+    <string name="app_name">Hive</string>
+    <string name="facebook_app_id">649744194488907</string>
+</resources>
