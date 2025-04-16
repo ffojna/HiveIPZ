@@ -16,7 +16,7 @@ import '../models/event.dart';
 import '../pages/event_page.dart';
 import '../styles/text_styles.dart';
 import '../styles/hive_colors.dart';
-
+import 'tickets_page.dart';
 
 /// Strona profilu użytkownika
 class ProfilePage extends StatefulWidget {
@@ -34,15 +34,38 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
   late TabController _tabController;
   List<dynamic> adminEvents = [];
   List<dynamic> joinedEvents = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
 
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _fetchUserData();
-    _fetchAdminEvents();
-    _fetchJoinedEvents();
+    _loadAllData();
+  }
+
+  Future<void> _loadAllData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    
+    try {
+      await _fetchUserData();
+      await Future.wait([
+        _fetchAdminEvents(),
+        _fetchJoinedEvents(),
+      ]);
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Wystąpił błąd podczas ładowania danych: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -51,21 +74,72 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
     super.dispose();
   }
 
-
-
   Future<void> _fetchAdminEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final response = await http.get(
-      Uri.parse('https://vps.jakosinski.pl:5000/user_events'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    print('Admin Events Response: ${response.body}');
-
-    if (response.statusCode == 200) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      
+      if (token == null) {
+        throw Exception('Brak tokenu sesji');
+      }
+      
+      final response = await http.get(
+        Uri.parse('${DatabaseHelper.link}/user_events'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      
+      print('Admin Events Response Code: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final fetchedEvents = jsonDecode(response.body);
+        if (!mounted) return;
+        setState(() {
+          adminEvents = fetchedEvents;
+        });
+        print('Pobrano ${adminEvents.length} administrowanych wydarzeń');
+      } else {
+        throw Exception('Błąd podczas pobierania administrowanych wydarzeń: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Błąd podczas pobierania administrowanych wydarzeń: $e');
       if (!mounted) return;
       setState(() {
-        adminEvents = jsonDecode(response.body);
+        _errorMessage = 'Nie udało się pobrać administrowanych wydarzeń';
+      });
+    }
+  }
+
+  Future<void> _fetchJoinedEvents() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      
+      if (token == null) {
+        throw Exception('Brak tokenu sesji');
+      }
+      
+      final response = await http.get(
+        Uri.parse('${DatabaseHelper.link}/joined_events'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      
+      print('Joined Events Response Code: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final fetchedEvents = jsonDecode(response.body);
+        if (!mounted) return;
+        setState(() {
+          joinedEvents = fetchedEvents;
+        });
+        print('Pobrano ${joinedEvents.length} dołączonych wydarzeń');
+      } else {
+        throw Exception('Błąd podczas pobierania dołączonych wydarzeń: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Błąd podczas pobierania dołączonych wydarzeń: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Nie udało się pobrać dołączonych wydarzeń';
       });
     }
   }
@@ -128,25 +202,6 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
         );
       },
     );
-  }
-
-
-  Future<void> _fetchJoinedEvents() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    final response = await http.get(
-      Uri.parse('https://vps.jakosinski.pl:5000/joined_events'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    print('AdminEvents response: ${response.body}');
-
-
-    if (response.statusCode == 200) {
-      if (!mounted) return;
-      setState(() {
-        joinedEvents = jsonDecode(response.body);
-      });
-    }
   }
 
 
@@ -448,6 +503,17 @@ class _ProfilePageState extends State<ProfilePage> with SingleTickerProviderStat
             ],
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.amber,
+        child: const Icon(Icons.confirmation_number_outlined),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TicketsPage()),
+          );
+        },
+        tooltip: 'Moje bilety',
       ),
     );
   }

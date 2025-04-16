@@ -414,19 +414,23 @@ class DatabaseHelper {
 
   // Czesć patrykowa id usera po tokenie
   static Future<Map<String, dynamic>?> getUserByToken(String token) async {
-    final url = Uri.parse('$link/get_user_by_token');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'token': token}),
-    );
+    try {
+      final url = Uri.parse('$link/get_user_by_token');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token}),
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['user'];
-    } else {
-      final error = jsonDecode(response.body)['message'];
-      throw Exception(error);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['user'];
+      } else {
+        final error = jsonDecode(response.body)['message'] ?? 'Nieznany błąd';
+        throw Exception(error);
+      }
+    } catch (e) {
+      throw Exception('Błąd połączenia: $e');
     }
   }
 
@@ -736,13 +740,22 @@ class DatabaseHelper {
 
 
   static Future<double> getOrganizerRating(String organizerId) async {
-    final url = Uri.parse('$link/organizer/$organizerId/rating');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return double.tryParse(data['average_rating'].toString()) ?? 0.0;
-    } else {
-      throw Exception('Błąd pobierania oceny organizatora');
+    try {
+      final url = Uri.parse('$link/organizer/$organizerId/rating');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Bezpieczne parsowanie i obsługa przypadku, gdy brak ocen (null lub empty)
+        final ratingValue = data['average_rating'];
+        if (ratingValue == null) return 0.0;
+        return double.tryParse(ratingValue.toString()) ?? 0.0;
+      } else {
+        print('Błąd pobierania oceny organizatora: ${response.statusCode} - ${response.body}');
+        return 0.0; // Zwracamy 0 zamiast rzucania wyjątku
+      }
+    } catch (e) {
+      print('Wyjątek podczas pobierania oceny organizatora: $e');
+      return 0.0; // Zwracamy 0 w przypadku błędu zamiast rzucania wyjątku
     }
   }
 
@@ -768,6 +781,34 @@ class DatabaseHelper {
     }
   }
 
+  static Future<List<Map<String, dynamic>>> getUserTickets() async {
+    final token = await getToken();
+    if (token == null) {
+      throw Exception('Brak tokenu sesji. Użytkownik nie jest zalogowany.');
+    }
 
+    final url = Uri.parse('$link/user/tickets');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body) as List<dynamic>;
+        return data.cast<Map<String, dynamic>>();
+      } catch (e) {
+        print('Błąd parsowania odpowiedzi JSON dla biletów: $e');
+        throw Exception('Błąd parsowania danych biletów');
+      }
+    } else {
+      try {
+        final error = jsonDecode(response.body)['error'] ?? 'Nieznany błąd';
+        throw Exception('Błąd serwera: $error');
+      } catch (e) {
+        throw Exception('Błąd serwera: nieoczekiwany format odpowiedzi');
+      }
+    }
+  }
 
 }

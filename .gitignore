@@ -1,3 +1,9 @@
 aplikacja\android\gradle.properties
 serwer\.env
 aplikacja/android/gradle.properties
+.idea/libraries/Dart_Packages-HP_Kuba.xml
+.idea/libraries/Dart_SDK-HP_Kuba.xml
+aplikacja/-PC_Kuba_ZS.flutter-plugins-dependencies
+aplikacja/android/gradle-HP_Kuba.properties
+aplikacja/pubspec-HP_Kuba.lock
+serwer/SerwerJVM/pom.xml
