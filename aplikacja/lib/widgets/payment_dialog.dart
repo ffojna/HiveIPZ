@@ -56,20 +56,28 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
   }
 
   double _calculateFinalPrice() {
-  double basePrice = widget.price;
-  double discount = widget.hasDiscount && basePrice > 10 ? 10.0 : 0.0;
-  double priceAfterDiscount = basePrice - discount;
-  
-  switch (_selectedTicketType) {
-    case 'vip':
-      return priceAfterDiscount * 1.3; // +30%
-    case 'discount':
-      return priceAfterDiscount * 0.7; // -30%
-    case 'standard':
-    default:
-      return priceAfterDiscount;
+    double basePrice = widget.price;
+    double priceAfterTicketType;
+    double priceAfterDiscount = 0.0;
+
+    // Najpierw oblicz cenę na podstawie typu biletu
+    switch (_selectedTicketType) {
+      case 'vip':
+        priceAfterTicketType = basePrice * 1.3; // +30%
+        break;
+      case 'discount':
+        priceAfterTicketType = basePrice * 0.7; // -30%
+        break;
+      case 'standard':
+      default:
+        priceAfterTicketType = basePrice;
+        break;
+    }
+
+    // Następnie odejmij zniżkę hasDiscount, jeśli dotyczy
+    double discount = widget.hasDiscount && basePrice > 10 ? 10.0 : 0.0;
+    return priceAfterDiscount = priceAfterTicketType - discount;
   }
-}
 
   // NOWA metoda do uzyskania nazwy typu biletu
   String _getTicketTypeName(String type) {
