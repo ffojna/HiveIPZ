@@ -193,6 +193,11 @@ class _EventPageState extends State<EventPage> {
     );
   }
 
+  bool _isParticipantOwner(String participantId) {
+    return participantId == currentEvent.userId.toString();
+  }
+
+
   void _showRatingDialog() {
     showDialog(
         context: context,
@@ -384,24 +389,23 @@ class _EventPageState extends State<EventPage> {
                     child: ListView.builder(
                       itemCount: participants.length,
                       itemBuilder: (context, index) {
+                        final participantId = participants[index];
+                        final isOwner = _isParticipantOwner(participantId);
+
                         return ListTile(
                           leading: const Icon(Icons.person),
-                          title: Text(participants[index]),
-                          trailing: isUserOwner
+                          title: Text(participantId),
+                          trailing: isUserOwner && !isOwner && participantId != currentUser?['nickName']
                               ? IconButton(
-                                  icon: const Icon(Icons.block,
-                                      color: Colors.red),
-                                  onPressed: () async {
-                                    await DatabaseHelper.banUser(
-                                        currentEvent.id, participants[index]);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text(
-                                              'Użytkownik został zbanowany')),
-                                    );
-                                    await refreshLists();
-                                  },
-                                )
+                            icon: const Icon(Icons.block, color: Colors.red),
+                            onPressed: () async {
+                              await DatabaseHelper.banUser(currentEvent.id, participants[index]);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Użytkownik został zbanowany')),
+                              );
+                              await refreshLists();
+                            },
+                          )
                               : null,
                         );
                       },
