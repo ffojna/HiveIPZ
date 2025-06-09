@@ -1,10 +1,10 @@
+import 'package:Hive/pages/sign_in.dart';
 import 'package:biometric_login/biometric_login.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../pages/password_change_page.dart';
 import '../pages/event_preferences_page.dart';
-
 
 /// Strona ustawień użytkownika
 class SettingsPage extends StatefulWidget {
@@ -107,11 +107,11 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
   }
-  Future<String?> getUserIdFromPrefs() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('userId');
-}
 
+  Future<String?> getUserIdFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userId');
+  }
 
   Future<bool> _showLogoutConfirmationDialog(BuildContext context) async {
     return await showDialog<bool>(
@@ -144,8 +144,11 @@ class _SettingsPageState extends State<SettingsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Wylogowano pomyślnie')),
         );
-        Navigator.pushReplacementNamed(
-            context, '/sign_in'); // Powrót do ekranu logowania
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SignInPage(events: []),
+            )); // Powrót do ekranu logowania
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Błąd: $e')),
@@ -273,17 +276,18 @@ class _SettingsPageState extends State<SettingsPage> {
               if (userId != null) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => EventPreferencesPage(userId: userId)),
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          EventPreferencesPage(userId: userId)),
                 );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Błąd pobierania danych użytkownika')),
+                  const SnackBar(
+                      content: Text('Błąd pobierania danych użytkownika')),
                 );
               }
             },
-
           ),
-
           Divider(),
           ListTile(
             title: Row(
@@ -383,6 +387,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
 class TwoFactorAuthPage extends StatefulWidget {
   final bool hasBiometrics;
+
   const TwoFactorAuthPage({
     Key? key,
     required this.hasBiometrics,
@@ -517,7 +522,9 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
                   onChanged: (value) async {
                     if (value && _pin.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Ustaw PIN przed włączeniem biometrii')),
+                        const SnackBar(
+                            content:
+                                Text('Ustaw PIN przed włączeniem biometrii')),
                       );
                       return;
                     }
@@ -548,13 +555,15 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
                   TextField(
                     controller: _pinController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Nowy PIN (4 cyfry)'),
+                    decoration:
+                        const InputDecoration(labelText: 'Nowy PIN (4 cyfry)'),
                     keyboardType: TextInputType.number,
                   ),
                   TextField(
                     controller: _confirmPinController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Potwierdź PIN'),
+                    decoration:
+                        const InputDecoration(labelText: 'Potwierdź PIN'),
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 10),
@@ -576,7 +585,6 @@ class _TwoFactorAuthPageState extends State<TwoFactorAuthPage> {
           ],
         ),
       ),
-      
     );
   }
 }

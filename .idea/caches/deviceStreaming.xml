@@ -8,7 +8,6 @@
           <option name="brand" value="Sony" />
           <option name="codename" value="A402SO" />
           <option name="id" value="A402SO" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Sony" />
           <option name="name" value="Xperia 10" />
           <option name="screenDensity" value="450" />
@@ -31,7 +30,6 @@
           <option name="brand" value="OnePlus" />
           <option name="codename" value="OP535DL1" />
           <option name="id" value="OP535DL1" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="OnePlus" />
           <option name="name" value="CPH2409" />
           <option name="screenDensity" value="401" />
@@ -175,7 +173,6 @@
           <option name="brand" value="samsung" />
           <option name="codename" value="b6q" />
           <option name="id" value="b6q" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Samsung" />
           <option name="name" value="Flip 6" />
           <option name="screenDensity" value="340" />
@@ -216,18 +213,6 @@
           <option name="screenY" value="2142" />
         </PersistentDeviceSelectionData>
         <PersistentDeviceSelectionData>
-          <option name="api" value="35" />
-          <option name="brand" value="google" />
-          <option name="codename" value="caiman" />
-          <option name="id" value="caiman" />
-          <option name="labId" value="google" />
-          <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro" />
-          <option name="screenDensity" value="360" />
-          <option name="screenX" value="960" />
-          <option name="screenY" value="2142" />
-        </PersistentDeviceSelectionData>
-        <PersistentDeviceSelectionData>
           <option name="api" value="34" />
           <option name="brand" value="google" />
           <option name="codename" value="comet" />
@@ -243,19 +228,6 @@
           <option name="brand" value="google" />
           <option name="codename" value="comet" />
           <option name="id" value="comet" />
-          <option name="manufacturer" value="Google" />
-          <option name="name" value="Pixel 9 Pro Fold" />
-          <option name="screenDensity" value="390" />
-          <option name="screenX" value="2076" />
-          <option name="screenY" value="2152" />
-        </PersistentDeviceSelectionData>
-        <PersistentDeviceSelectionData>
-          <option name="api" value="35" />
-          <option name="brand" value="google" />
-          <option name="codename" value="comet" />
-          <option name="default" value="true" />
-          <option name="id" value="comet" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
           <option name="name" value="Pixel 9 Pro Fold" />
           <option name="screenDensity" value="390" />
@@ -300,7 +272,6 @@
           <option name="brand" value="motorola" />
           <option name="codename" value="dubai" />
           <option name="id" value="dubai" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Motorola" />
           <option name="name" value="edge 30" />
           <option name="screenDensity" value="405" />
@@ -389,7 +360,6 @@
           <option name="brand" value="motorola" />
           <option name="codename" value="fogos" />
           <option name="id" value="fogos" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Motorola" />
           <option name="name" value="moto g34 5G" />
           <option name="screenDensity" value="280" />
@@ -423,7 +393,6 @@
           <option name="brand" value="samsung" />
           <option name="codename" value="gts7lwifi" />
           <option name="id" value="gts7lwifi" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Samsung" />
           <option name="name" value="SM-T870" />
           <option name="screenDensity" value="340" />
@@ -479,7 +448,6 @@
           <option name="brand" value="samsung" />
           <option name="codename" value="gts9wifi" />
           <option name="id" value="gts9wifi" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Samsung" />
           <option name="name" value="SM-X710" />
           <option name="screenDensity" value="340" />
@@ -546,7 +514,6 @@
           <option name="brand" value="motorola" />
           <option name="codename" value="manaus" />
           <option name="id" value="manaus" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Motorola" />
           <option name="name" value="edge 40 neo" />
           <option name="screenDensity" value="400" />
@@ -591,7 +558,6 @@
           <option name="brand" value="samsung" />
           <option name="codename" value="pa3q" />
           <option name="id" value="pa3q" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Samsung" />
           <option name="name" value="Galaxy S25 Ultra" />
           <option name="screenDensity" value="600" />
@@ -703,7 +669,6 @@
           <option name="brand" value="google" />
           <option name="codename" value="tegu" />
           <option name="id" value="tegu" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Google" />
           <option name="name" value="Pixel 9a" />
           <option name="screenDensity" value="420" />
@@ -737,7 +702,6 @@
           <option name="brand" value="samsung" />
           <option name="codename" value="xcover7" />
           <option name="id" value="xcover7" />
-          <option name="labId" value="google" />
           <option name="manufacturer" value="Samsung" />
           <option name="name" value="SM-G556B" />
           <option name="screenDensity" value="450" />
