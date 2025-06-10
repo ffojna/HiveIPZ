@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
+import '../database/database_helper.dart';
 
 class PaymentBottomSheet extends StatefulWidget {
   final double price;
@@ -8,6 +9,7 @@ class PaymentBottomSheet extends StatefulWidget {
   final VoidCallback onDiscountTap;
   final bool hasDiscountTickets;
   final bool hasVipTickets;
+  final String userId;
 
   const PaymentBottomSheet({
     super.key,
@@ -16,6 +18,7 @@ class PaymentBottomSheet extends StatefulWidget {
     required this.onDiscountTap,
     this.hasDiscountTickets = false,
     this.hasVipTickets = false,
+    required this.userId,
   });
 
   @override
@@ -133,6 +136,7 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
           price: price,
           hasDiscount: true,
           onDiscountTap: () => _showDiscountDialog(context, price, canUsePromo),
+          userId: widget.userId, // Pass userId here
         ),
       );
 
@@ -352,6 +356,22 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
                   await prefs.setString(
                       'expiryDate', _expiryDateController.text);
                   await prefs.setString('cvv', _cvvController.text);
+
+                  try {
+                    await DatabaseHelper.addPoints(
+                      userId: widget.userId, // Use named parameter 'userId'
+                      amount:
+                      _calculateFinalPrice(), // Use named parameter 'amount'
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Punkty dodane pomyślnie!')),
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Błąd podczas dodawania punktów: $e')),
+                    );
+                  }
 
                   Navigator.pop(context, {
                     'confirmed': true,

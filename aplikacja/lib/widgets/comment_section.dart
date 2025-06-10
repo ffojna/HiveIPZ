@@ -19,11 +19,25 @@ class _CommentSectionState extends State<CommentSection> {
   final TextEditingController commentController = TextEditingController();
   List<Comment> comments = [];
   bool isLoadingComments = false;
+  bool isEventAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _fetchComments();
+    _checkAdminStatus();
+  }
+
+  // Sprawdzenie czy użytkownik jest administratorem wydarzenia
+  Future<void> _checkAdminStatus() async {
+    try {
+      final adminStatus = await DatabaseHelper.isAdmin(widget.eventId);
+      setState(() {
+        isEventAdmin = adminStatus;
+      });
+    } catch (e) {
+      print('Błąd podczas sprawdzania statusu administratora: $e');
+    }
   }
 
   // Pobranie komentarzy z serwera
@@ -68,6 +82,57 @@ class _CommentSectionState extends State<CommentSection> {
     }
   }
 
+  // Usuwanie komentarza (tylko dla administratorów wydarzenia)
+  Future<void> _deleteComment(Comment comment) async {
+    try {
+      await DatabaseHelper.deleteEventComment(widget.eventId, comment.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Komentarz został usunięty')),
+      );
+      await _fetchComments(); // Odśwież listę komentarzy
+    } catch (e) {
+      print('Błąd podczas usuwania komentarza: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Nie udało się usunąć komentarza: $e')),
+      );
+    }
+  }
+
+  // Pokazuje dialog potwierdzający usunięcie komentarza
+  void _showDeleteDialog(Comment comment) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Usuń komentarz'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Autor: ${comment.username}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Treść: ${comment.text}'),
+            const SizedBox(height: 12),
+            const Text('Czy na pewno chcesz usunąć ten komentarz?'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteComment(comment);
+            },
+            child: const Text('Usuń'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );  }
 
   // Formatowanie daty dla komentarzy
   String _formatDate(DateTime date) {
@@ -155,10 +220,38 @@ class _CommentSectionState extends State<CommentSection> {
       ),
     );
   }
-
   // Pokazuje kontekstowe menu po przytrzymaniu komentarza
   void _showContextMenu(BuildContext context, Offset position, Comment comment) {
     final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    
+    List<PopupMenuEntry<String>> menuItems = [
+      const PopupMenuItem(
+        value: 'report',
+        child: Row(
+          children: [
+            Icon(Icons.flag, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Zgłoś komentarz'),
+          ],
+        ),
+      ),
+    ];
+
+    // Dodaj opcję usuwania tylko dla admina
+    if (isEventAdmin) {
+      menuItems.add(
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Usuń komentarz'),
+            ],
+          ),
+        ),
+      );
+    }
     
     showMenu(
       context: context,
@@ -166,21 +259,12 @@ class _CommentSectionState extends State<CommentSection> {
         Rect.fromLTWH(position.dx, position.dy, 1, 1),
         Rect.fromLTWH(0, 0, overlay.size.width, overlay.size.height),
       ),
-      items: [
-        PopupMenuItem(
-          value: 'report',
-          child: Row(
-            children: const [
-              Icon(Icons.flag, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Zgłoś komentarz'),
-            ],
-          ),
-        ),
-      ],
+      items: menuItems,
     ).then((value) {
       if (value == 'report') {
         _showReportDialog(comment);
+      } else if (value == 'delete') {
+        _showDeleteDialog(comment);
       }
     });
   }
@@ -192,13 +276,12 @@ class _CommentSectionState extends State<CommentSection> {
       height: MediaQuery.of(context).size.height * 0.7,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        children: [          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Komentarze',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                'Komentarze${isEventAdmin ? ' (Administrator)' : ''}',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -237,8 +320,7 @@ class _CommentSectionState extends State<CommentSection> {
                                         style: const TextStyle(
                                           fontWeight: FontWeight.bold,
                                         ),
-                                      ),
-                                      Row(
+                                      ),                                      Row(
                                         children: [
                                           Text(
                                             _formatDate(comment.createdAt),
@@ -255,6 +337,16 @@ class _CommentSectionState extends State<CommentSection> {
                                               _showReportDialog(comment);
                                             },
                                           ),
+                                          // Pokaż przycisk usuwania tylko dla admina
+                                          if (isEventAdmin)
+                                            IconButton(
+                                              icon: const Icon(Icons.delete, size: 16, color: Colors.red),
+                                              padding: EdgeInsets.zero,
+                                              constraints: const BoxConstraints(),
+                                              onPressed: () {
+                                                _showDeleteDialog(comment);
+                                              },
+                                            ),
                                         ],
                                       ),
                                     ],

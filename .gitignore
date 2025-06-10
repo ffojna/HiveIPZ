@@ -12,3 +12,8 @@ serwer/Serwer2.0/instance/.env
 serwer/venv/lib64
 aplikacja/lib/pages/event_page_moj.dart
 serwer/.idea/workspace.xml
+.idea/libraries/Dart_Packages.xml
+.idea/libraries/Dart_Packages.xml
+.idea/libraries/Dart_SDK.xml
+aplikacja/android/gradle.properties
+aplikacja/macos/Flutter/GeneratedPluginRegistrant.swift

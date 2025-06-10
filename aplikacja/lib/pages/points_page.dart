@@ -330,12 +330,12 @@ class _PointsPageState extends State<PointsPage> {
                                         "", // niepotrzebne, bo używamy ikony
                                     isIcon: true,
                                     onTap: () {
-                                      if ((userEvents?.isEmpty ?? true)) {
+                                      if ((userEvents?.isEmpty ?? true)) { // This condition becomes true
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
                                               content: Text(
-                                                  "Brak wydarzeń do promowania.")),
+                                                  "Brak wydarzeń do promowania.")), // This message is shown
                                         );
                                         return;
                                       }

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import '../pages/password_change_page.dart';
 import '../pages/event_preferences_page.dart';
+import '../pages/referral_code_page.dart';
 
 /// Strona ustawień użytkownika
 class SettingsPage extends StatefulWidget {
@@ -235,6 +236,22 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+
+  void _navigateToReferralCodePage() {
+    if (userId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => ReferralCodePage(userId: userId!)),
+      );
+    } else {
+      // Handle the case where userId is null (e.g., show an error or a loading indicator)
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Błąd: ID użytkownika niedostępne.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (userData == null || userId == null) {
@@ -259,6 +276,12 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Weryfikacja dwuetapowa'),
             trailing: const Icon(Icons.arrow_forward_ios),
             onTap: _navigateTo2FASetup,
+          ),
+          ListTile(
+            leading: const Icon(Icons.code),
+            title: const Text('Kod referencyjny'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: _navigateToReferralCodePage,
           ),
           ListTile(
             leading: const Icon(Icons.person),

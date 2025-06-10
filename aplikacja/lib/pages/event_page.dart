@@ -328,12 +328,13 @@ class _EventPageState extends State<EventPage> {
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) => PaymentBottomSheet(
-          price: price,
-          hasDiscount: true,
-          onDiscountTap: () => _showDiscountDialog(context, price, canUsePromo),
-          hasDiscountTickets: currentEvent.hasDiscountTickets,
-          hasVipTickets: currentEvent.hasVipTickets,
-        ),
+            price: price,
+            hasDiscount: true,
+            onDiscountTap: () =>
+                _showDiscountDialog(context, price, canUsePromo),
+            hasDiscountTickets: currentEvent.hasDiscountTickets,
+            hasVipTickets: currentEvent.hasVipTickets,
+            userId: userId!),
       );
 
       if (paymentResult != null && paymentResult['confirmed'] == true) {
@@ -534,18 +535,19 @@ class _EventPageState extends State<EventPage> {
               int.parse(userId!), 'promo_ticket');
           final canUsePromo = hasPromo && currentEvent.cena > 10;
 
-          final paymentResult = await showModalBottomSheet<Map<String, dynamic>>(
+          final paymentResult =
+          await showModalBottomSheet<Map<String, dynamic>>(
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (context) => PaymentBottomSheet(
-              price: currentEvent.cena,
-              hasDiscount: false,
-              onDiscountTap: () =>
-                  _showDiscountDialog(context, currentEvent.cena, canUsePromo),
-              hasDiscountTickets: currentEvent.hasDiscountTickets,
-              hasVipTickets: currentEvent.hasVipTickets,
-            ),
+                price: currentEvent.cena,
+                hasDiscount: false,
+                onDiscountTap: () => _showDiscountDialog(
+                    context, currentEvent.cena, canUsePromo),
+                hasDiscountTickets: currentEvent.hasDiscountTickets,
+                hasVipTickets: currentEvent.hasVipTickets,
+                userId: userId!),
           );
 
           if (paymentResult == null || paymentResult['confirmed'] != true) return;

@@ -18,6 +18,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
+  final _referralCodeController =
+
+  TextEditingController(); // NOWY: Kontroler dla kodu referencyjnego
   bool _showPassword = false;
 
 
@@ -29,10 +32,12 @@ class _RegisterPageState extends State<RegisterPage> {
       final userNickname = _userNicknameController.text;
       final email = _emailController.text;
       final password = _passwordController.text;
-
+      final referralCode = _referralCodeController.text.isEmpty
+          ? null
+          : _referralCodeController.text;
       try {
         // Dodaj użytkownika do bazy danych
-        await DatabaseHelper.addUser(name, surname, age, userNickname, email, password);
+        await DatabaseHelper.addUser(name, surname, age, userNickname, email, password, referralCode);
 
         // Wyświetl komunikat o powodzeniu i przejdź do ekranu logowania
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,19 +159,21 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Checkbox(
-                          value: _showPassword,
-                          onChanged: (value) {
-                            setState(() {
-                              _showPassword = value!;
-                            });
-                          }
-                      ),
-                      const Text("Pokaż hasło")
-                    ]
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Checkbox(
+                      value: _showPassword,
+                      onChanged: (value) {
+                        setState(() {
+                          _showPassword = value!;
+                        });
+                      }),
+                  const Text("Pokaż hasło")
+                ]),
+                TextFormField(
+                  controller: _referralCodeController, // NOWY: Kontroler
+                  decoration: const InputDecoration(
+                      labelText: 'Kod referencyjny (opcjonalnie)'),
+                  // Brak walidatora, ponieważ pole jest opcjonalne
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
