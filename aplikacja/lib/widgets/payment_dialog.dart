@@ -359,9 +359,9 @@ class _PaymentBottomSheetState extends State<PaymentBottomSheet> {
 
                   try {
                     await DatabaseHelper.addPoints(
-                      userId: widget.userId, // Use named parameter 'userId'
-                      amount:
-                      _calculateFinalPrice(), // Use named parameter 'amount'
+                      userId: widget.userId, // Funkcja oczekuje String
+                      amount: _calculateFinalPrice(),
+                      reason: "Kupno biletu", // Przekazujemy nowy, opcjonalny parametr
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Punkty dodane pomyślnie!')),

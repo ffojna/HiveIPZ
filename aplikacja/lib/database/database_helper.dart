@@ -969,22 +969,37 @@ class DatabaseHelper {
     }
   }
 
-  // Dodanie punktów za kupienie biletu
-  static Future<void> addPoints(
-      {required String userId, required double amount}) async {
+  static Future<void> addPoints({
+    required String userId,
+    required double amount,
+    String? reason, // Parametr 'reason' jest teraz opcjonalny
+  }) async {
     final url = Uri.parse('$link/add_points');
+
+    // Tworzymy mapę z podstawowymi danymi
+    final Map<String, dynamic> body = {
+      'user_id': userId,
+      'amount': amount,
+    };
+
+    // Jeśli 'reason' został podany i nie jest pusty, dodajemy go do ciała żądania
+    if (reason != null && reason.isNotEmpty) {
+      body['reason'] = reason;
+    }
+
+    // Wysłanie zapytania do serwera
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'user_id': userId,
-        'amount': amount,
-      }),
+      body: jsonEncode(body), // Konwersja całej mapy `body` na JSON
     );
+
     if (response.statusCode == 200) {
-      print('Punkty dodane pomyślnie');
+      print('Punkty dodane pomyślnie. Powód: $reason');
     } else {
-      throw Exception(jsonDecode(response.body)['error']);
+      // Próba odczytania błędu z odpowiedzi serwera
+      final errorData = jsonDecode(response.body);
+      throw Exception(errorData['error'] ?? 'Wystąpił nieznany błąd serwera.');
     }
   }
 
@@ -1033,6 +1048,61 @@ class DatabaseHelper {
     } catch (e) {
       print('Error during fetchUserReferralCode: $e');
       throw Exception('Network error or server issue: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getPointsHistory(int userId) async {
+    final url = Uri.parse('$link/get_points_history');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': userId}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) {
+          return data;
+        } else {
+          // Obsługa błędu, jeśli serwer zwróci np. {"error": "..."}
+          throw Exception(data['error'] ?? 'Nieprawidłowy format odpowiedzi od serwera.');
+        }
+      } else {
+        // Obsługa błędów HTTP
+        throw Exception('Błąd serwera: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Obsługa błędów sieciowych lub parsowania JSON
+      throw Exception('Nie udało się załadować historii punktów: $e');
+    }
+  }
+
+  static Future<void> spendPoints({
+    required int userId,
+    required int pointsToSpend,
+    required String reason,
+  }) async {
+    final url = Uri.parse('$link/spend_points');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'points': pointsToSpend, // Wysyłamy jako dodatnią liczbę
+          'reason': reason,
+        }),
+      );
+
+      // Sprawdzamy, czy operacja na serwerze się powiodła
+      if (response.statusCode != 200) {
+        // Jeśli serwer zwrócił błąd, próbujemy odczytać wiadomość
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['error'] ?? 'Wystąpił błąd podczas wydawania punktów.');
+      }
+    } catch (e) {
+      throw Exception('Nie udało się wydać punktów: $e');
     }
   }
 }

@@ -3,6 +3,7 @@ import '../database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event.dart';
 import '../styles/hive_colors.dart';
+import 'points_history_page.dart';
 
 class PointsPage extends StatefulWidget {
   const PointsPage({Key? key}) : super(key: key);
@@ -15,7 +16,7 @@ class _PointsPageState extends State<PointsPage> {
   Map<String, dynamic>? userData;
   int? userId;
   int? userPoints;
-  List<Event>? userEvents; // Lista obiektów Event
+  List<Event>? userEvents;
   double _scale = 1.0;
 
   @override
@@ -28,84 +29,58 @@ class _PointsPageState extends State<PointsPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-
       if (token == null) {
         throw Exception("Brak tokena w SharedPreferences");
       }
-
-      final data = await DatabaseHelper.getUserByToken(token);
-
+      final data = await DatabaseHelper.getUserByToken(token); // Załóżmy, że ta funkcja istnieje
       setState(() {
         userData = data;
         userId = data?['id'];
         userPoints = data?['points'];
       });
-      // Pobranie wydarzeń dla tego użytkownika
       if (userId != null) {
-        final events = await DatabaseHelper.getUserEvents(userId!);
+        final events = await DatabaseHelper.getUserEvents(userId!); // Załóżmy, że ta funkcja istnieje
         setState(() {
-          userEvents = events?.map((eventMap) {
-            return Event(
-              id: eventMap['id'],
-              name: eventMap['name'],
-              location: eventMap['location'],
-              description: eventMap['description'],
-              type: eventMap['type'],
-              startDate: DateTime.parse(eventMap['start_date']),
-              updatedAt: DateTime.parse(eventMap['updated_at']),
-              maxParticipants: eventMap['max_participants'],
-              registeredParticipants: eventMap['registered_participants'],
-              imagePath: eventMap['image'],
-              userId: eventMap['user_id'],
-              cena: double.tryParse(eventMap['cena'].toString()) ?? 0.0,
-              isPromoted: eventMap['is_promoted'] == 1,
-            );
-          }).toList();
+          userEvents = events?.map((eventMap) => Event.fromJson(eventMap)).toList();
         });
       }
     } catch (e) {
       print('Błąd podczas pobierania danych użytkownika: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Błąd podczas pobierania danych: $e')),
+        );
+      }
     }
   }
 
-  // Funkcja do promowania wydarzenia
+  // Zaktualizowana funkcja do promowania wydarzenia
   Future<void> promoteEvent(Event event) async {
-    if (userPoints! < 1000) {
+    if ((userPoints ?? 0) < 1000) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Nie masz wystarczająco punktów!')),
       );
       return;
     }
 
-    // Zmniejszamy punkty użytkownika o 1000
     try {
-      final updatedUser = userData!;
-      updatedUser['points'] =
-          userPoints! - 1000; // Zmniejszamy punkty użytkownika
-
-      // Aktualizujemy dane użytkownika
-      await DatabaseHelper.updateUser(
-          userId.toString(), {'points': updatedUser['points'].toString()});
+      // **POPRAWIONA LOGIKA**
+      // Jedno wywołanie do serwera, które obsługuje obie operacje
+      await DatabaseHelper.spendPoints(
+        userId: userId!,
+        pointsToSpend: 1000,
+        reason: 'Promowanie wydarzenia: ${event.name}',
+      );
 
       // Używamy copyWith na obiekcie Event i zmieniamy isPromoted
       Event updatedEvent = event.copyWith(isPromoted: true);
 
-      // Aktualizujemy wydarzenie w bazie danych
-      await DatabaseHelper.updateEvent(event.id, {
-        'name': event.name,
-        'location': event.location,
-        'description': event.description,
-        'type': event.type,
-        'start_date': event.startDate.toIso8601String(),
-        'max_participants': event.maxParticipants,
-        'registered_participants': event.registeredParticipants,
-        'image': event.imagePath,
-        'is_promoted': updatedEvent.isPromoted,
-      });
+      // Aktualizujemy wydarzenie lokalnie i w bazie danych
+      await DatabaseHelper.updateEvent(event.id, {'is_promoted': true}); // Załóżmy, że ta funkcja istnieje
 
       // Aktualizujemy stan aplikacji
       setState(() {
-        userPoints = updatedUser['points'];
+        userPoints = (userPoints ?? 0) - 1000;
         final index = userEvents?.indexWhere((e) => e.id == event.id);
         if (index != null && index >= 0) {
           userEvents?[index] = updatedEvent;
@@ -135,15 +110,18 @@ class _PointsPageState extends State<PointsPage> {
               shrinkWrap: true,
               itemCount: userEvents?.length ?? 0,
               itemBuilder: (context, index) {
-                final event = userEvents?[index];
+                final event = userEvents![index];
                 return ListTile(
-                  title: Text(event?.name ?? 'Brak nazwy'),
-                  trailing: event?.isPromoted == true
+                  title: Text(event.name),
+                  enabled: !event.isPromoted,
+                  trailing: event.isPromoted
                       ? Icon(Icons.star, color: Colors.orange)
                       : null,
                   onTap: () {
-                    Navigator.of(context).pop();
-                    promoteEvent(event!);
+                    if (!event.isPromoted) {
+                      Navigator.of(context).pop();
+                      promoteEvent(event);
+                    }
                   },
                 );
               },
@@ -175,35 +153,24 @@ class _PointsPageState extends State<PointsPage> {
 
                 if ((userPoints ?? 0) < 3500) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Nie masz wystarczająco HoneyCoins!')),
+                    SnackBar(content: Text('Nie masz wystarczająco HoneyCoins!')),
                   );
                   return;
                 }
 
                 try {
-                  // Odejmij punkty
-                  int newPoints = userPoints! - 3500;
-                  await DatabaseHelper.updateUser(
-                    userId.toString(),
-                    {'points': newPoints.toString()},
+                  // **POPRAWIONA LOGIKA**
+                  await DatabaseHelper.spendPoints(
+                    userId: userId!,
+                    pointsToSpend: 3500,
+                    reason: 'Zakup promocji -10zł na bilet',
                   );
 
-                  // Dodaj promocję
-                  final hasPromo = await DatabaseHelper.hasPromotion(
-                      userId!, 'promo_ticket');
-                  if (hasPromo) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                          content: Text('Masz już aktywną promocję -10zł.')),
-                    );
-                    return;
-                  }
-                  await DatabaseHelper.addUserPromotion(
-                      userId!, 'promo_ticket');
+                  // Dodajemy promocję po stronie klienta i w bazie
+                  await DatabaseHelper.addUserPromotion(userId!, 'promo_ticket'); // Załóżmy, że ta funkcja istnieje
 
                   setState(() {
-                    userPoints = newPoints;
+                    userPoints = (userPoints ?? 0) - 3500;
                   });
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -212,7 +179,66 @@ class _PointsPageState extends State<PointsPage> {
                 } catch (e) {
                   print('Błąd przy wykupie: $e');
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Wystąpił błąd podczas wykupu.')),
+                    SnackBar(content: Text('Wystąpił błąd podczas wykupu: $e')),
+                  );
+                }
+              },
+              child: Text('Tak, wykup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  void _showPriorityQueueConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Potwierdzenie'),
+          content: Text(
+            'Czy na pewno chcesz wykupić dostęp do kolejek priorytetowych za 5000 HoneyCoins?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Anuluj'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+
+                if ((userPoints ?? 0) < 5000) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Nie masz wystarczająco HoneyCoins!')),
+                  );
+                  return;
+                }
+
+                try {
+                  // **POPRAWIONA LOGIKA**
+                  await DatabaseHelper.spendPoints(
+                    userId: userId!,
+                    pointsToSpend: 5000,
+                    reason: 'Zakup dostępu do kolejki priorytetowej',
+                  );
+
+                  await DatabaseHelper.addUserPromotion(userId!, 'priority_queue'); // Załóżmy, że ta funkcja istnieje
+
+                  setState(() {
+                    userPoints = (userPoints ?? 0) - 5000;
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Dostęp priorytetowy został aktywowany!')),
+                  );
+                } catch (e) {
+                  print('Błąd przy wykupie dostępu priorytetowego: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Wystąpił błąd podczas wykupu: $e')),
                   );
                 }
               },
@@ -237,60 +263,79 @@ class _PointsPageState extends State<PointsPage> {
           icon: Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.history, color: Colors.black, size: 28),
+            onPressed: () {
+              if (userId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PointsHistoryPage(userId: userId!),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Nie można załadować historii. Spróbuj ponownie.')),
+                );
+              }
+            },
+          ),
+          SizedBox(width: 10),
+        ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Container(
-              width: cardWidth,
-              height: 160,
-              padding: EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 4.0,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Image.asset(
-                    'assets/honeycoins.png', // Zastąp nazwą swojego pliku PNG
-                    height: 100, // Opcjonalnie, ustaw wysokość ikony
-                    width: 100, // Opcjonalnie, ustaw szerokość ikony
-                  ),
-                  SizedBox(width: 10),
-                  Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center, // Center vertically
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text("HoneyCoins",
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                width: cardWidth,
+                height: 160,
+                padding: EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25.0),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4.0,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Image.asset(
+                      'assets/honeycoins.png',
+                      height: 100,
+                      width: 100,
+                    ),
+                    SizedBox(width: 10),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text("HoneyCoins",
+                            style: TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.w200)),
+                        Text(
+                          userPoints?.toString() ?? '0',
                           style: TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w200)),
-                      Text(
-                        userPoints?.toString() ?? '0',
-                        style: TextStyle(
-                          fontSize: 34,
-                          letterSpacing: 2.0,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      )
-                    ],
-                  ),
-                ],
+                            fontSize: 34,
+                            letterSpacing: 2.0,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        )
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          SizedBox(height: 20),
-          Expanded(
-            child: Container(
+            SizedBox(height: 20),
+            Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
@@ -308,67 +353,58 @@ class _PointsPageState extends State<PointsPage> {
                               fontSize: 34, fontWeight: FontWeight.bold)),
                     ),
                     SizedBox(height: 20),
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(120.0)),
+                    Column(
+                      children: [
+                        RewardCard(
+                          title: "Promowanie wydarzenia",
+                          priceText: "1000′",
+                          badgeText: "",
+                          isIcon: true,
+                          onTap: () {
+                            if ((userEvents?.isEmpty ?? true)) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(
+                                        "Brak wydarzeń do promowania.")),
+                              );
+                              return;
+                            }
+                            _showEventSelectionDialog();
+                          },
                         ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              SizedBox(height: 20),
-                              Column(
-                                children: [
-                                  RewardCard(
-                                    title: "Promowanie wydarzenia",
-                                    priceText: "1000′",
-                                    badgeText:
-                                        "", // niepotrzebne, bo używamy ikony
-                                    isIcon: true,
-                                    onTap: () {
-                                      if ((userEvents?.isEmpty ?? true)) { // This condition becomes true
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  "Brak wydarzeń do promowania.")), // This message is shown
-                                        );
-                                        return;
-                                      }
-                                      _showEventSelectionDialog();
-                                    },
-                                  ),
-                                  RewardCard(
-                                    title: "Promocja na dowolny bilet",
-                                    priceText: "3500′",
-                                    badgeText: "-10zł",
-                                    isIcon: false,
-                                    onTap: () {
-                                      _showPromoTicketConfirmationDialog();
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        RewardCard(
+                          title: "Promocja na dowolny bilet",
+                          priceText: "3500′",
+                          badgeText: "-10zł",
+                          isIcon: false,
+                          onTap: () {
+                            _showPromoTicketConfirmationDialog();
+                          },
+
                         ),
-                      ),
+                        RewardCard(
+                          title: "Dostęp do kolejki priorytetowej",
+                          priceText: "5000′",
+                          badgeText: "FAST",
+                          isIcon: false,
+                          onTap: () {
+                            _showPriorityQueueConfirmationDialog();
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
+// Ten widget pozostaje bez zmian
 class RewardCard extends StatefulWidget {
   final String title;
   final String priceText;
@@ -421,10 +457,9 @@ class _RewardCardState extends State<RewardCard> {
             child: Container(
               width: MediaQuery.of(context).size.width * 0.75,
               height: 160,
-              color: Colors.white, // tło przeniesione tutaj
+              color: Colors.white,
               child: Stack(
                 children: [
-                  // Żółte kółko
                   Positioned(
                     top: -10,
                     right: -10,
@@ -440,20 +475,19 @@ class _RewardCardState extends State<RewardCard> {
                         child: Center(
                           child: widget.isIcon
                               ? Icon(Icons.trending_up,
-                                  size: 80, color: Colors.black)
+                              size: 80, color: Colors.black)
                               : Text(
-                                  widget.badgeText,
-                                  style: TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
+                            widget.badgeText,
+                            style: TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  // Treść
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
